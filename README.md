@@ -1,29 +1,27 @@
-1. Domínio
+1. Domínio do Banco de Dados
 
-Elenco atual do Palmeiras: jogadores, posições, contratos e estatísticas nas competições.
+Escolhi o elenco atual do Palmeiras. O banco guarda os jogadores, as posições em que jogam, os contratos e as estatísticas (jogos e gols) em cada competição.
 
 2. Contextualização
 
-O departamento de futebol do Palmeiras controla o elenco em planilhas e papéis soltos. Os problemas:
+Imagine que o departamento de futebol do Palmeiras controla o elenco só com planilhas e papéis. Isso causa vários problemas:
 
-O mesmo jogador é digitado várias vezes e os dados ficam repetidos.
+O mesmo jogador é digitado várias vezes, então os dados ficam repetidos.
 Se alguém muda a idade ou o contrato em uma planilha, as outras ficam desatualizadas.
 É difícil responder perguntas como "quem fez mais gols?" ou "quais contratos acabam este ano?".
-Qualquer pessoa pode apagar ou alterar dados sem controle.
-Com muitas planilhas, a busca fica lenta e dá erro.
+Qualquer pessoa pode apagar ou alterar dados sem ninguém perceber.
+Quando tem muita planilha, a busca fica lenta e aparecem erros.
 3. Proposta de melhoria
 
-Usar um SGBD relacional (MySQL) para guardar tudo em tabelas ligadas entre si:
+Minha proposta é usar um SGBD relacional (MySQL), que guarda tudo em tabelas ligadas entre si. Com isso:
 
-Cada informação é guardada uma vez só.
-As consultas em SQL respondem perguntas em segundos.
-Chaves primárias e estrangeiras evitam dados errados.
-Dá para controlar o acesso e fazer cópias de segurança (dump).
+Cada informação fica guardada uma vez só.
+Com SQL, dá para responder as perguntas em segundos.
+As chaves primárias e estrangeiras evitam dados errados.
+É possível controlar quem acessa o banco e fazer cópia de segurança (dump).
 4. Modelagem lógica
 
-Print do diagrama: modelagem.png
-
-Modelagem
+Modelagem do banco
 
 Tabelas, campos e tipos
 
@@ -68,42 +66,53 @@ jogos	INT
 gols	INT	
 Relacionamentos e cardinalidade
 Relação	Tipo	Explicação
-posicoes e jogadores	1 para muitos (1:N)	Uma posição tem vários jogadores, mas cada jogador tem uma posição.
-jogadores e contratos	1 para 1 (1:1)	Cada jogador tem um contrato atual.
-jogadores e competicoes	muitos para muitos (N:N)	Um jogador disputa várias competições e cada competição tem vários jogadores. A tabela estatisticas resolve isso.
+posicoes e jogadores	1 para muitos (1:N)	Uma posição tem vários jogadores, mas cada jogador tem só uma posição.
+jogadores e contratos	1 para 1 (1:1)	Cada jogador tem um contrato e cada contrato é de um jogador.
+jogadores e competicoes	muitos para muitos (N:N)	Um jogador disputa várias competições e cada competição tem vários jogadores. Resolvi isso com a tabela estatisticas, que fica no meio.
 5. Formas Normais
 
-1FN: cada campo guarda um valor só e cada linha tem chave primária. Não colocamos "Brasileirão, Libertadores" em uma célula. Sem isso, não dá para somar gols nem filtrar por competição.
+1FN: cada campo guarda um valor só e cada linha tem uma chave primária. Eu não coloquei "Brasileirão, Libertadores" na mesma célula. Isso é importante porque, sem isso, não dá para somar gols nem filtrar por competição.
 
-2FN: estar na 1FN e não ter dependência parcial da chave. Em estatisticas, jogos e gols dependem do jogador e da competição juntos. Dados só do jogador ficam em jogadores e dados só da competição ficam em competicoes. Assim o nome do jogador não se repete em cada competição.
+2FN: além de estar na 1FN, nenhum campo pode depender só de uma parte da chave. Na tabela estatisticas, jogos e gols dependem do jogador e da competição juntos. Os dados que são só do jogador (nome, idade) ficaram em jogadores, e os que são só da competição (nome, ano) ficaram em competicoes. Assim o nome do jogador não se repete em cada competição.
 
-3FN: estar na 2FN e não ter dependência transitiva. O nome da posição não fica em jogadores, fica em posicoes, e o jogador guarda só o id_posicao. Se o nome de uma posição mudar, a alteração é feita em um lugar só.
+3FN: além de estar na 2FN, um campo não pode depender de outro campo que não seja a chave. O nome da posição não fica em jogadores, fica em posicoes, e o jogador guarda só o id_posicao. Se o nome de uma posição mudar, eu altero em um lugar só.
 
-4FN: estar na 3FN e não ter dependências multivaloradas. Um jogador tem contrato e várias competições, que são informações independentes. Por isso separamos em contratos e estatisticas, em vez de misturar tudo em uma tabela gigante. Isso evita combinações repetidas e inúteis.
+4FN: além de estar na 3FN, não pode ter informações independentes misturadas na mesma tabela. O contrato do jogador e as competições que ele disputa não têm relação entre si. Por isso separei em contratos e estatisticas, em vez de fazer uma tabela gigante com combinações repetidas.
 
-6. Scripts SQL
-estrutura_dados.sql: cria o banco, as tabelas e popula os dados (mínimo de 5 registros em cada tabela).
-consultas.sql: 15 consultas contextualizadas, com as respostas em comentário (INNER JOIN, WHERE, LIKE, GROUP BY, ORDER BY, BETWEEN, SUM, AVG, MAX, MIN, HAVING, LIMIT).
-7. Passo a passo do dump (estrutura e dados)
+6. Instruções SQL
+estrutura_dados.sql: cria o banco palmeiras_elenco, cria as 5 tabelas e popula todas (mínimo de 5 registros em cada).
+consultas.sql: 15 consultas contextualizadas, cada uma com a resposta em comentário. Usei INNER JOIN, WHERE, LIKE, GROUP BY, ORDER BY, BETWEEN, SUM, AVG, MAX, MIN, HAVING e LIMIT.
+
+Quantidade de registros: posicoes (5), jogadores (16), contratos (8), competicoes (5) e estatisticas (16).
+
+7. Passo a passo para fazer o dump (estrutura e dados)
 
 Pelo terminal:
 
-Abra o terminal (ou Prompt de Comando).
-Rode o comando e digite a senha quando pedir:
+Abrir o terminal (ou Prompt de Comando).
+Rodar o comando abaixo e digitar a senha quando pedir:
    mysqldump -u root -p palmeiras_elenco > palmeiras_elenco_dump.sql
-Só a estrutura, sem dados: mysqldump -u root -p --no-data palmeiras_elenco > estrutura.sql
-Para restaurar em outro computador: mysql -u root -p < palmeiras_elenco_dump.sql
+
+Isso salva a estrutura e os dados no arquivo. 3. Se quiser só a estrutura (sem dados): mysqldump -u root -p --no-data palmeiras_elenco > estrutura.sql 4. Para restaurar o banco em outro computador: mysql -u root -p < palmeiras_elenco_dump.sql
 
 Pelo MySQL Workbench:
 
-Menu Server, depois Data Export.
-Marque o banco palmeiras_elenco.
-Escolha "Export to Self-Contained File" e o local do arquivo.
-Deixe marcado "Dump Structure and Data".
-Clique em Start Export.
+Ir no menu Server e clicar em Data Export.
+Marcar o banco palmeiras_elenco.
+Escolher Export to Self-Contained File e o local para salvar.
+Deixar marcado Dump Structure and Data.
+Clicar em Start Export.
 
-O arquivo palmeiras_elenco_dump.sql deste repositório é o resultado desse processo.
+O arquivo palmeiras_elenco_dump.sql deste repositório contém a estrutura e os dados do banco.
 
-Observação
+8. Arquivos do repositório
+Arquivo	O que tem
+README.md	Este documento, com toda a parte escrita
+modelagem.png	Print da modelagem do banco
+estrutura_dados.sql	Criação do banco, das tabelas e inserção dos dados
+consultas.sql	As 15 consultas com as respostas
+palmeiras_elenco_dump.sql	Dump com estrutura e dados
 
-Os nomes dos jogadores são do elenco de 2026. Idades, números de camisa, gols, jogos e datas de contrato são dados de exemplo para fins de estudo.
+
+
+
